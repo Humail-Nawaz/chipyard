@@ -28,16 +28,16 @@ case object AdderKey extends Field[Option[AdderParams]](None)
 // DOC include end: Adder key
 
 class AdderIO(val w: Int) extends Bundle {
-  val clock = Input(Clock())
-  val reset = Input(Bool())
-  val input_ready = Output(Bool())
-  val input_valid = Input(Bool())
+  // val clock = Input(Clock())
+  // val reset = Input(Bool())
+  // val input_ready = Output(Bool())
+  // val input_valid = Input(Bool())
   val x = Input(UInt(w.W))
   val y = Input(UInt(w.W))
-  val output_ready = Input(Bool())
-  val output_valid = Output(Bool())
+  // val output_ready = Input(Bool())
+  // val output_valid = Output(Bool())
   val adder = Output(UInt(w.W))
-  val busy = Output(Bool())
+  //val busy = Output(Bool())
 }
 
 class HLSAdderAccelIO(val w: Int) extends Bundle {
