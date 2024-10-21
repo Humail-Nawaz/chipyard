@@ -12,7 +12,7 @@ unsigned int ADDER_ref(unsigned int x, unsigned int y) {
 // DOC include start: ADDER test
 int main(void)
 {
-  uint32_t result, ref, x = 20, y = 15;
+  uint32_t result, ref, x = 520, y = 15;
 
   // wait for peripheral to be ready
   while ((reg_read8(ADDER_STATUS) & 0x2) == 0) ;
