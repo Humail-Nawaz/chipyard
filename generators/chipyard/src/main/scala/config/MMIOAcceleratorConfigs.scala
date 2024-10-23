@@ -33,6 +33,28 @@ class GCDHLSRocketConfig extends Config(
   new freechips.rocketchip.rocket.WithNHugeCores(1) ++
   new chipyard.config.AbstractConfig)
 
+// DOC include start: FactorialTLRocketConfig
+class FactorialTLRocketConfig extends Config(
+  new chipyard.example.WithFactorial(useAXI4=false, useBlackBox=false) ++          // Use Factorial Chisel, connect Tilelink
+  new freechips.rocketchip.rocket.WithNHugeCores(1) ++
+  new chipyard.config.AbstractConfig)
+// DOC include end: FactorialTLRocketConfig
+// DOC include start: FactorialAXI4BlackBoxRocketConfig
+
+class FactorialAXI4BlackBoxRocketConfig extends Config(
+  new chipyard.example.WithFactorial(useAXI4=true, useBlackBox=true) ++            // Use Factorial blackboxed verilog, connect by AXI4->Tilelink
+  new freechips.rocketchip.rocket.WithNHugeCores(1) ++
+  new chipyard.config.AbstractConfig)
+// DOC include end: FactorialAXI4BlackBoxRocketConfig
+// DOC include start: FactorialHLSRocketConfig
+
+class FactorialHLSRocketConfig extends Config(
+  new chipyard.example.WithFactorial(useAXI4=false, useBlackBox=false, useHLS=true) ++
+  new freechips.rocketchip.rocket.WithNHugeCores(1) ++
+  new chipyard.config.AbstractConfig)
+// DOC include end: FactorialHLSRocketConfig
+
+
 // DOC include start: InitZeroRocketConfig
 class InitZeroRocketConfig extends Config(
   new chipyard.example.WithInitZero(0x88000000L, 0x1000L) ++   // add InitZero
