@@ -505,7 +505,19 @@ class WithTraceIOPunchthrough extends OverrideLazyIOBinder({
         nharts = tiles.size,
         bootrom = chipyardSystem.bootROM.map(_.module.contents.toArray.mkString(" ")).getOrElse(""),
         has_dtm = useSimDTM,
-        mems = mems,
+
+
+
+
+
+        //mems = mems,
+        
+        
+
+
+
+
+        
         // Connect using the legacy API for firesim only
         mem0_base = p(ExtMem).map(_.master.base).getOrElse(BigInt(0)),
         mem0_size = p(ExtMem).map(_.master.size).getOrElse(BigInt(0)),

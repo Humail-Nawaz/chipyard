@@ -21,11 +21,45 @@ class GCDTLRocketConfig extends Config(
   new chipyard.config.AbstractConfig)
 // DOC include end: GCDTLRocketConfig
 
-// DOC include start: GCDAXI4BlackBoxRocketConfig
-class GCDAXI4BlackBoxRocketConfig extends Config(
-  new chipyard.example.WithGCD(useAXI4=true, useBlackBox=true) ++            // Use GCD blackboxed verilog, connect by AXI4->Tilelink
+
+
+// DOC include start: FactorialTLRocketConfig
+class FactorialTLRocketConfig extends Config(
+  new chipyard.example.WithFactorial(useAXI4=false, useBlackBox=false) ++  // Correct syntax with commas
   new freechips.rocketchip.rocket.WithNHugeCores(1) ++
   new chipyard.config.AbstractConfig)
+// DOC include end: FactorialTLRocketConfig
+
+
+class FactorialAXI4BlackBoxRocketConfig extends Config(
+
+new chipyard.example.WithFactorial (useAXI4=true, useBlackBox=true) ++
+
+new freechips.rocketchip.rocket.WithNHugeCores (1) ++
+
+new chipyard.config.AbstractConfig)
+
+// DOC include end: FactorialAXI4BlackBoxRocketConfig
+
+// DOC include start: FactorialHLSRocketConfig
+
+class FactorialHLSRocketConfig extends Config(
+
+new chipyard.example.WithFactorial (useAXI4=false, useBlackBox=false, useHLS=true)++
+
+new freechips.rocketchip.rocket.WithNHugeCores (1) ++
+
+new chipyard.config.AbstractConfig)
+
+// DOC include end: FactorialHLSRocketConfi
+
+
+
+
+
+
+
+
 // DOC include end: GCDAXI4BlackBoxRocketConfig
 
 class GCDHLSRocketConfig extends Config(
