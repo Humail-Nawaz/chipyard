@@ -21,6 +21,11 @@ class GCDTLRocketConfig extends Config(
   new chipyard.config.AbstractConfig)
 // DOC include end: GCDTLRocketConfig
 
+class AdderTLRocketConfig extends Config(
+  new chipyard.example.WithAdder(useAXI4=false, useBlackBox=false) ++          // Use Adder Chisel, connect Tilelink
+  new freechips.rocketchip.rocket.WithNHugeCores(1) ++
+  new chipyard.config.AbstractConfig)
+
 // DOC include start: GCDAXI4BlackBoxRocketConfig
 class GCDAXI4BlackBoxRocketConfig extends Config(
   new chipyard.example.WithGCD(useAXI4=true, useBlackBox=true) ++            // Use GCD blackboxed verilog, connect by AXI4->Tilelink
