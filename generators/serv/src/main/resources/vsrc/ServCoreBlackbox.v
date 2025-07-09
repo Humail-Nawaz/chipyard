@@ -80,7 +80,7 @@ module ServCoreBlackbox
     output  [USER_WIDTH-1:0] o_r_user,
     // ---------------------------------------------------------------- //
 
-    // AXI2WB AXI SIGNALS FROM BRIDGE TO EXTERNAL(PERIPHERAL/ADAPTER/BUS)
+    // WB2AXI AXI SIGNALS FROM BRIDGE TO EXTERNAL(PERIPHERAL/ADAPTER/BUS)
 
 
     // AXI address write channel
@@ -146,7 +146,7 @@ module ServCoreBlackbox
 );
 
 
-serving_bridge_top  // Serving (SoClet containing SERV and Servile Wrapper) plus the Bridge for conversion from Wishbone to AXI and vice versa when needed.
+ServCore  // Serving (SoClet containing SERV and Servile Wrapper) plus the Bridge for conversion from Wishbone to AXI and vice versa when needed.
 #(
         .memfile(MEMFILE_B),
         .memsize(MEMSIZE_B),
@@ -158,7 +158,7 @@ serving_bridge_top  // Serving (SoClet containing SERV and Servile Wrapper) plus
         .USER_WIDTH(USER_WIDTH)
 )
 
-i_serving_bridge_top (
+ServCore_uut (
    
     .clk(clk),
     .rst(rst),
