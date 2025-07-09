@@ -7,4 +7,4 @@
 ##################################################################
 
 # requirements needed to run the generator
-EXTRA_GENERATOR_REQS += $(call lookup_srcs,$(base_dir)/generators/serv,sv) $(call lookup_srcs,$(base_dir)/generators/serv,v)
+EXTRA_GENERATOR_REQS += $(call lookup_srcs,$(BASE_DIR)/generators/serv,sv) $(call lookup_srcs,$(BASE_DIR)/generators/serv,v)

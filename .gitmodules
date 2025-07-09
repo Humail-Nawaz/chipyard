@@ -154,3 +154,12 @@
 [submodule "generators/vexiiriscv"]
 	path = generators/vexiiriscv
 	url = https://github.com/ucb-bar/vexiiriscv-tile.git
+[submodule "generators/srev/src/main/resources/vsrc/serv"]
+	path = generators/srev/src/main/resources/vsrc/serv
+	url = https://github.com/Humail-Nawaz/serv.git
+[submodule "generators/serv/src/main/resources/vsrc"]
+	path = generators/serv/src/main/resources/vsrc
+	url = https://github.com/Humail-Nawaz/serv.git
+[submodule "generators/serv/src/main/resources/vsrc/serv"]
+	path = generators/serv/src/main/resources/vsrc/serv
+	url = https://github.com/Humail-Nawaz/serv.git

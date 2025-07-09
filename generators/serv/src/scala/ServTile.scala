@@ -143,7 +143,9 @@ class ServTile private(
 
   tlOtherMastersNode := tlMasterXbar.node
   masterNode :=* tlOtherMastersNode
-  DisableMonitors { implicit p => tlSlaveXbar.node :*= slaveNode }
+  //DisableMonitors { implicit p => tlSlaveXbar.node :*= slaveNode }
+  tlSlaveXbar.node :*= slaveNode
+
   
   // Required entry of CPU device in the device tree for interrupt purpose
   val cpuDevice: SimpleDevice = new SimpleDevice("cpu", Seq("OlofKindgren,serv", "riscv")) {
@@ -202,30 +204,27 @@ override lazy val module = new ServTileModuleImp(this)
     := AXI4Fragmenter() // deal with multi-beat xacts
     := ServAXI4MNode) // Custom SERV node.
 
+// slave node //
+
+val slaveNode = AXI4SlaveNode(Seq(AXI4SlavePortParameters(
+  slaves = Seq(AXI4SlaveParameters(
+    address       = Seq(AddressSet(0x80000000L, 0x0FFFFFFFL)), // 256MB region
+    resources     = new ResourceScope("serving-ram"),
+    regionType    = RegionType.UNCACHED,
+    executable    = true,
+    supportsWrite = TransferSizes(1, 4),
+    supportsRead  = TransferSizes(1, 4))),
+  beatBytes = 4)))
+
+slaveNode :=
+  AXI4Buffer() :=            // optional but good
+  AXI4UserYanker(Some(2)) := // removes AXI user fields
+  AXI4Fragmenter() :=        // handles AXI bursts
+  TLToAXI4() :=              // converts TileLink to AXI4
+  TLWidthWidget(4) :=        // ensures TL beat size matches
+  tlSlaveXbar.node           // main system bus
 
 
-/*val slaveTLNode = TLIdentityNode()
-
-val ServAXI4SNode = AXI4SlaveNode(Seq(
-  AXI4SlavePortParameters(
-    slaves = Seq(AXI4SlaveParameters(
-      address       = Seq(AddressSet(0x40000000L, 0x3FF)),
-      resources     = (new SimpleDevice("serv", Seq("ucbbar,serv"))).reg("mem"),
-      executable    = false,
-      supportsRead  = TransferSizes(1, beatBytes),
-      supportsWrite = TransferSizes(1, beatBytes)
-    )),
-    beatBytes = beatBytes
-  )
-))*/
-
-/* Connect TileLink side to AXI4 side
-ServAXI4SNode :=
-  AXI4Fragmenter() := AXI4UserYanker() := AXI4Deinterleaver(beatBytes) :=
-  TLToAXI4() := TLBuffer() := TLWidthWidget(beatBytes) := slaveTLNode*/
-
-// Directly attach the SERV slave TL node to the PeripheryBus (for internal access)
-//pbuss.node := TLBuffer() := slaveTLNode
 
 def connectServInterrupts(mtip: Bool): Unit = {
     val (interrupts, _) = intSinkNode.in(0)
@@ -316,7 +315,7 @@ class ServTileModuleImp(outer: ServTile) extends BaseTileModuleImp(outer){
     core.io.i_rm_id := 0.U 
   }
             
-  /*------------SERV SLAVE NODE CONNECTION WITH AXI BUNDLE-----------------//
+  ------------SERV SLAVE NODE CONNECTION WITH AXI BUNDLE-----------------//
   //-------------FROM EXTERNAL TO SERVING
 outer.ServAXI4SNode.in foreach { case (in, edgeIn) =>
   in.aw.ready := core.io.o_awready
@@ -377,7 +376,7 @@ outer.ServAXI4SNode.in foreach { case (in, edgeIn) =>
   //unused signals
   assert (core.io.o_r_id   === 0.U)
   assert (core.io.o_r_user === 0.U) 
-}  */
+}  
 
   
 }
