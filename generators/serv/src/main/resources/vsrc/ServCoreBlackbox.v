@@ -6,7 +6,7 @@ module ServCoreBlackbox
    parameter SIM_B = 1'b0,
    parameter RESET_STRATEGY_B = "MINI",
    parameter WITH_CSR_B = 1,
-   parameter AW_B       = 13,
+   parameter AW_B       = 32,
    parameter USER_WIDTH = 0,
    parameter ID_WIDTH   = 0
 )

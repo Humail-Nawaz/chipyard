@@ -66,7 +66,7 @@ case class ServCoreParams(
   val misaWritable: Boolean = false
   val haveCFlush: Boolean = false
   val nL2TLBEntries: Int = 0
-  val mtvecInit: Option[BigInt] = Some(0)
+  val mtvecInit: Option[BigInt] = Some(0x80000000L)
   val mtvecWritable: Boolean = false
   val nL2TLBWays: Int = 0
   val lrscCycles: Int = 80
@@ -81,7 +81,7 @@ case class ServCoreParams(
   val mcontextWidth = 0              // No machine context
   val scontextWidth = 0              // No supervisor context
   // SERV SPECIFIC
-  val aw_b: Int = 12
+  val aw_b: Int = 32
   val iw_b: Int = 0
   val uw_b: Int = 0
   val with_csr_b: Boolean = true
@@ -138,7 +138,7 @@ class ServTile private(
   val intOutwardNode = None   
   val masterNode = visibilityNode         // Master interface — TL visibility
   val slaveNode  = TLIdentityNode()        // Slave node for MMIO
-
+  
   val beatBytes = p(PeripheryBusKey).beatBytes
 
   tlOtherMastersNode := tlMasterXbar.node
@@ -179,7 +179,6 @@ override def makeSlaveBoundaryBuffers(crossing: ClockCrossingType)(implicit p: P
   }
 
 
-
 override lazy val module = new ServTileModuleImp(this)
 
 
@@ -205,26 +204,41 @@ override lazy val module = new ServTileModuleImp(this)
     := ServAXI4MNode) // Custom SERV node.
 
 // slave node //
+val tlSlaveNode = TLManagerNode(Seq(
+  TLSlavePortParameters.v1(
+    managers = Seq(TLSlaveParameters.v1(
+      address            = Seq(AddressSet(0x50000000L, 0x03FFFFFFL)),
+      regionType         = RegionType.UNCACHED,
+      executable         = true,
+      supportsGet        = TransferSizes(1, 4),
+      supportsPutFull    = TransferSizes(1, 4),
+      supportsPutPartial = TransferSizes(1, 4),
+      fifoId             = Some(0) 
+    )),
+    beatBytes = 4
+  )
+))
 
-val slaveNode = AXI4SlaveNode(Seq(AXI4SlavePortParameters(
+ val axi4SlaveNode = AXI4SlaveNode(Seq(AXI4SlavePortParameters(
   slaves = Seq(AXI4SlaveParameters(
-    address       = Seq(AddressSet(0x80000000L, 0x0FFFFFFFL)), // 256MB region
-    resources     = new ResourceScope("serving-ram"),
-    regionType    = RegionType.UNCACHED,
-    executable    = true,
-    supportsWrite = TransferSizes(1, 4),
-    supportsRead  = TransferSizes(1, 4))),
-  beatBytes = 4)))
+    address         = Seq(AddressSet(0x50000000L, 0x03FFFFFFL)),
+    regionType      = RegionType.UNCACHED,
+    executable      = true,
+    supportsRead    = TransferSizes(1, 4),
+    supportsWrite   = TransferSizes(1, 4)
+  )),
+  beatBytes = 4
+)))
 
-slaveNode :=
-  AXI4Buffer() :=            // optional but good
-  AXI4UserYanker(Some(2)) := // removes AXI user fields
-  AXI4Fragmenter() :=        // handles AXI bursts
-  TLToAXI4() :=              // converts TileLink to AXI4
-  TLWidthWidget(4) :=        // ensures TL beat size matches
-  tlSlaveXbar.node           // main system bus
-
-
+axi4SlaveNode :=
+  AXI4Buffer() :=               // optional buffering
+  AXI4UserYanker(Some(1)) :=    // remove user field (added by AXI4IdIndexer)
+  AXI4IdIndexer(1) :=           // collapse IDs to a single ID = 0
+  AXI4Fragmenter() :=           // break down large bursts
+  TLToAXI4() :=                 // convert TL to AXI
+  TLSourceShrinker(1) :=        // reduce TileLink source ID width to 1
+  TLWidthWidget(4) :=           // set width to 4 bytes (32-bit)
+  tlSlaveXbar.node
 
 def connectServInterrupts(mtip: Bool): Unit = {
     val (interrupts, _) = intSinkNode.in(0)
@@ -315,9 +329,9 @@ class ServTileModuleImp(outer: ServTile) extends BaseTileModuleImp(outer){
     core.io.i_rm_id := 0.U 
   }
             
-  ------------SERV SLAVE NODE CONNECTION WITH AXI BUNDLE-----------------//
+  //------------SERV SLAVE NODE CONNECTION WITH AXI BUNDLE-----------------//
   //-------------FROM EXTERNAL TO SERVING
-outer.ServAXI4SNode.in foreach { case (in, edgeIn) =>
+outer.axi4SlaveNode.in foreach { case (in, edgeIn) =>
   in.aw.ready := core.io.o_awready
   core.io.i_awvalid := in.aw.valid
   core.io.i_awaddr  := in.aw.bits.addr
