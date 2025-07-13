@@ -10,6 +10,8 @@ import freechips.rocketchip.rocket.{RocketCoreParams, MulDivParams, DCacheParams
 import cva6.{CVA6TileAttachParams}
 import sodor.common.{SodorTileAttachParams}
 import ibex.{IbexTileAttachParams}
+import serv.{ServTileAttachParams}
+import vexiiriscv.{VexiiRiscvTileAttachParams}
 import testchipip.cosim.{TracePortKey, TracePortParams}
 import barf.{TilePrefetchingMasterPortParams}
 
@@ -105,6 +107,10 @@ class WithTilePrefetchers extends Config((site, here, up) => {
     case tp: SodorTileAttachParams => tp.copy(crossingParams = tp.crossingParams.copy(
       master = TilePrefetchingMasterPortParams(tp.tileParams.tileId, tp.crossingParams.master)))
     case tp: IbexTileAttachParams => tp.copy(crossingParams = tp.crossingParams.copy(
+      master = TilePrefetchingMasterPortParams(tp.tileParams.tileId, tp.crossingParams.master)))
+    case tp: ServTileAttachParams => tp.copy(crossingParams = tp.crossingParams.copy(
+      master = TilePrefetchingMasterPortParams(tp.tileParams.tileId, tp.crossingParams.master)))
+    case tp: VexiiRiscvTileAttachParams => tp.copy(crossingParams = tp.crossingParams.copy(
       master = TilePrefetchingMasterPortParams(tp.tileParams.tileId, tp.crossingParams.master)))
     case tp: CVA6TileAttachParams => tp.copy(crossingParams = tp.crossingParams.copy(
       master = TilePrefetchingMasterPortParams(tp.tileParams.tileId, tp.crossingParams.master)))
