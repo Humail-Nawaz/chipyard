@@ -15,6 +15,7 @@ import chisel3.experimental.{IntParam, StringParam, RawParam}
 import org.chipsalliance.cde.config._
 import freechips.rocketchip.subsystem._
 import freechips.rocketchip.diplomacy._
+import org.chipsalliance.diplomacy.lazymodule.LazyModule
 import freechips.rocketchip.devices.tilelink._
 import freechips.rocketchip.rocket._
 import freechips.rocketchip.subsystem.{RocketCrossingParams}
@@ -66,7 +67,7 @@ case class ServCoreParams(
   val misaWritable: Boolean = false
   val haveCFlush: Boolean = false
   val nL2TLBEntries: Int = 0
-  val mtvecInit: Option[BigInt] = Some(0)
+  val mtvecInit: Option[BigInt] = Some(0x80000000L)
   val mtvecWritable: Boolean = false
   val nL2TLBWays: Int = 0
   val lrscCycles: Int = 80
@@ -81,7 +82,7 @@ case class ServCoreParams(
   val mcontextWidth = 0              // No machine context
   val scontextWidth = 0              // No supervisor context
   // SERV SPECIFIC
-  val aw_b: Int = 12
+  val aw_b: Int = 32
   val iw_b: Int = 0
   val uw_b: Int = 0
   val with_csr_b: Boolean = true
@@ -137,14 +138,13 @@ class ServTile private(
   //TL nodes
   val intOutwardNode = None   
   val masterNode = visibilityNode         // Master interface — TL visibility
-  val slaveNode  = TLIdentityNode()        // Slave node for MMIO
 
   val beatBytes = p(PeripheryBusKey).beatBytes
-
+  
   tlOtherMastersNode := tlMasterXbar.node
   masterNode :=* tlOtherMastersNode
-  DisableMonitors { implicit p => tlSlaveXbar.node :*= slaveNode }
-  
+  //DisableMonitors { implicit p => tlSlaveXbar.node :*= slaveNode }
+
   // Required entry of CPU device in the device tree for interrupt purpose
   val cpuDevice: SimpleDevice = new SimpleDevice("cpu", Seq("OlofKindgren,serv", "riscv")) {
     override def parent = Some(ResourceAnchors.cpus)
@@ -177,10 +177,9 @@ override def makeSlaveBoundaryBuffers(crossing: ClockCrossingType)(implicit p: P
   }
 
 
-
 override lazy val module = new ServTileModuleImp(this)
 
-
+//------------ MASTER NODE STARTS------------//
   val portNameM = "serv-axi4-master"
   val idBitsM = 0
   //val beatBytes = 4
@@ -190,8 +189,11 @@ override lazy val module = new ServTileModuleImp(this)
       masters = Seq(AXI4MasterParameters(
         name = portNameM,
         id = IdRange(0, 1 << idBitsM))))))
+        
+
 
   val memoryTap = TLIdentityNode()
+  
  (tlMasterXbar.node  
     := memoryTap
     := TLBuffer()
@@ -201,31 +203,94 @@ override lazy val module = new ServTileModuleImp(this)
     := AXI4UserYanker(Some(2)) // remove user field on AXI interface. need but in reality user intf. not needed
     := AXI4Fragmenter() // deal with multi-beat xacts
     := ServAXI4MNode) // Custom SERV node.
+ //---------------MASTER NODE ENDS--------------//   
 
 
 
-/*val slaveTLNode = TLIdentityNode()
+//------------ SLAVE NODE STARTS --------------//
 
-val ServAXI4SNode = AXI4SlaveNode(Seq(
-  AXI4SlavePortParameters(
-    slaves = Seq(AXI4SlaveParameters(
-      address       = Seq(AddressSet(0x40000000L, 0x3FF)),
-      resources     = (new SimpleDevice("serv", Seq("ucbbar,serv"))).reg("mem"),
-      executable    = false,
-      supportsRead  = TransferSizes(1, beatBytes),
-      supportsWrite = TransferSizes(1, beatBytes)
+// External TL slave node (to be connected manually in subsystem)
+val tapNode = TLIdentityNode() // Expose this in ChipyardSubsystem
+println(s"[ServTile] tapNode identity: ${tapNode}")
+// Create a fork to drive multiple outputs
+val tapFork = TLXbar()
+tapFork := tapNode
+
+val slaveBase = 0x60000000L
+val slaveSize = 0x01000000L // 16MB
+val slaveAddrSet = AddressSet(slaveBase + servParams.tileId * slaveSize, log2Ceil(slaveSize))
+println(f"[ServTile] tileId=${servParams.tileId} gets address region: 0x${slaveAddrSet.base}%08X to 0x${slaveAddrSet.mask}%08X")
+
+// Define the actual TileLink manager node (serving memory region)
+val tlSlaveNode = TLManagerNode(Seq(
+  TLSlavePortParameters.v1(
+    managers = Seq(TLSlaveParameters.v1(
+      address            = Seq(AddressSet(slaveBase + servParams.tileId * slaveSize, log2Ceil(slaveSize))),
+      regionType         = RegionType.UNCACHED,
+      executable         = true,
+      supportsGet        = TransferSizes(1, 64),
+      supportsPutFull    = TransferSizes(1, 64),
+      supportsPutPartial = TransferSizes(1, 64),
+      fifoId             = Some(0)
     )),
-    beatBytes = beatBytes
+    beatBytes = 4
   )
-))*/
+))
 
-/* Connect TileLink side to AXI4 side
-ServAXI4SNode :=
-  AXI4Fragmenter() := AXI4UserYanker() := AXI4Deinterleaver(beatBytes) :=
-  TLToAXI4() := TLBuffer() := TLWidthWidget(beatBytes) := slaveTLNode*/
+// Connect slave node from tapNode (which will be driven from Subsystem)
+tlSlaveNode := tapFork
 
-// Directly attach the SERV slave TL node to the PeripheryBus (for internal access)
-//pbuss.node := TLBuffer() := slaveTLNode
+// Expose the actual slaveNode implementation
+override def slaveNode: TLInwardNode = tlSlaveNode
+val axiBaseAddress = 0x50000000L
+val axiPerTileSize = 0x04000000L // 64MB per tile AXI region
+//val axiTileAddrSet = AddressSet(axiBaseAddress + servParams.tileId * axiPerTileSize, axiPerTileSize - 1)
+// Also expose an AXI4 version (optional)
+val axi4SlaveNode = AXI4SlaveNode(Seq(AXI4SlavePortParameters(
+  slaves = Seq(AXI4SlaveParameters(
+    address         = Seq(AddressSet(axiBaseAddress + servParams.tileId * axiPerTileSize, axiPerTileSize - 1)),
+    regionType      = RegionType.UNCACHED,
+    executable      = true,
+    supportsRead    = TransferSizes(1, 4),
+    supportsWrite   = TransferSizes(1, 4)
+  )),
+  beatBytes = 4
+)))
+// Bridge from TL to AXI4
+axi4SlaveNode :=
+  AXI4Buffer() :=
+  AXI4UserYanker(Some(1)) :=
+  AXI4IdIndexer(1) :=
+  AXI4Fragmenter() :=
+  TLToAXI4() :=
+  TLSourceShrinker(1) :=
+  TLWidthWidget(4) :=
+  tapFork
+  println("ServTile: tlSlaveNode connected from tapFork")
+
+//------------ SLAVE NODE ENDS --------------//
+
+
+
+
+val tlWidthWidget = LazyModule(new TLWidthWidget(4))        // make width = 4 bytes
+//val tl2axi = LazyModule(new TLToAXI4())
+val axi4Fragmenter  = LazyModule(new AXI4Fragmenter())
+val axi4IdIndexer   = LazyModule(new AXI4IdIndexer(1))
+val axi4UserYanker  = LazyModule(new AXI4UserYanker(Some(1)))
+val axi4Buffer      = LazyModule(new AXI4Buffer())
+val tlShrinker      = LazyModule(new TLSourceShrinker(1))
+
+val tl2axi = LazyModule(new TLToAXI4(
+  combinational = true,           // or false if you want buffering
+  adapterName = Some("serv_tl2axi"),
+  stripBits = 0,
+  wcorrupt = true
+))
+
+
+
+
 
 def connectServInterrupts(mtip: Bool): Unit = {
     val (interrupts, _) = intSinkNode.in(0)
@@ -316,9 +381,9 @@ class ServTileModuleImp(outer: ServTile) extends BaseTileModuleImp(outer){
     core.io.i_rm_id := 0.U 
   }
             
-  /*------------SERV SLAVE NODE CONNECTION WITH AXI BUNDLE-----------------//
+  //------------SERV SLAVE NODE CONNECTION WITH AXI BUNDLE-----------------//
   //-------------FROM EXTERNAL TO SERVING
-outer.ServAXI4SNode.in foreach { case (in, edgeIn) =>
+outer.axi4SlaveNode.in foreach { case (in, edgeIn) =>
   in.aw.ready := core.io.o_awready
   core.io.i_awvalid := in.aw.valid
   core.io.i_awaddr  := in.aw.bits.addr
@@ -377,7 +442,7 @@ outer.ServAXI4SNode.in foreach { case (in, edgeIn) =>
   //unused signals
   assert (core.io.o_r_id   === 0.U)
   assert (core.io.o_r_user === 0.U) 
-}  */
+}  
 
   
 }

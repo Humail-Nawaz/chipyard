@@ -45,7 +45,7 @@ extends BlackBox(
   		val  rst	 = Input(Bool())
   		val  i_timer_irq = Input(Bool())
 	  
-  		/*val  i_awaddr    = Input(UInt(aw_b.W))
+  		val  i_awaddr    = Input(UInt(aw_b.W))
 		val  i_awvalid   = Input(Bool())
 		val  o_awready   = Output(Bool())
 	        val  i_aw_id	 = Input(UInt(iw_b.W))
@@ -93,7 +93,7 @@ extends BlackBox(
 	  	val  o_rlast	 = Output(Bool())
 	  	val  o_rvalid    = Output(Bool())
                 val  o_r_id      = Output(UInt(iw_b.W))
-	        val  o_r_user    = Output(UInt(uw_b.W))*/
+	        val  o_r_user    = Output(UInt(uw_b.W))
 	  
 	  	val  i_awmready  = Input(Bool())
 	        val  o_awmaddr   = Output(UInt(12.W))
