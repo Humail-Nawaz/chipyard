@@ -19,8 +19,16 @@ import freechips.rocketchip.interrupts._
 import freechips.rocketchip.util._
 import freechips.rocketchip.subsystem._
 import freechips.rocketchip.amba.axi4._
+import freechips.rocketchip.resources.ResourceBinding
+import freechips.rocketchip.resources.Device
+import freechips.rocketchip.resources.ResourceBindings
+import freechips.rocketchip.resources.Description
+import freechips.rocketchip.resources.Resource
+import freechips.rocketchip.resources.ResourceString
+import freechips.rocketchip.resources.ResourceAlias
 
 import testchipip.serdes.{CanHavePeripheryTLSerial, SerialTLKey}
+import serv.ServTile
 
 trait CanHaveHTIF { this: BaseSubsystem =>
   // Advertise HTIF if system can communicate with fesvr
@@ -78,7 +86,18 @@ class ChipyardSubsystem(implicit p: Parameters) extends BaseSubsystem
     with CanHaveHTIF
     with CanHaveChosenInDTS
 {
-  def coreMonitorBundles = totalTiles.values.map {
+  
+  
+  totalTiles.foreach {
+  case (_, servTile: ServTile) =>
+    val sbus = tlBusWrapperLocationMap(SBUS)
+    sbus.coupleTo(s"serv_tile_${servTile.tileParams.tileId}") { bus: TLOutwardNode =>
+      servTile.tapNode := TLFragmenter(4, 4) := bus
+      println(s"[ChipyardSubsystem] tapNode connected for ServTile ${servTile.tileParams.tileId}")
+    }
+  case _ => // skip other tile types
+}
+def coreMonitorBundles = totalTiles.values.map {
     case r: RocketTile => r.module.core.rocketImpl.coreMonitorBundle
     case b: boom.v3.common.BoomTile => b.module.core.coreMonitorBundle
     case b: boom.v4.common.BoomTile => b.module.core.coreMonitorBundle
